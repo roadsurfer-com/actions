@@ -1,0 +1,29 @@
+name: 'Publish to Firebase'
+description: 'Publishing to Firebase'
+inputs:
+  app-id:
+    description: 'Firebase App ID'
+    required: true
+    type: string
+  credentials-file:
+    description: 'Firebase Service Account credentials file'
+    required: true
+    type: string
+  target-groups:
+    description: 'Groups to release the app to'
+    required: false
+    default: testers
+  file:
+    description: 'The file (IPA or APK) to upload'
+    required: true
+    type: string
+runs:
+  using: "composite"
+  steps:
+    - uses: wzieba/Firebase-Distribution-Github-Action@v1
+      with:
+        appId: ${{ inputs.app-id }}
+        serviceCredentialsFileContent: ${{ inputs.credentials-file }}
+        groups: ${{ inputs.target-groups }}
+        file: ${{ inputs.file }}
+        debug: true

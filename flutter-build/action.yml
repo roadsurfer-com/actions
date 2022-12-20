@@ -1,0 +1,55 @@
+name: 'Build Flutter Artifact'
+description: 'Building IPA, APK or App Bundle for flutter applications'
+inputs:
+  build-number:
+    description: 'Build number'
+    required: true
+  use-cache:
+    description: 'Use cached version of packages (to speed up the build)'
+    required: false
+    default: false
+  clean:
+    description: 'Should perform a `flutter clean` first?'
+    required: false
+    default: false
+  build-type:
+    description: 'ipa, apk or appbundle'
+    required: true
+  build-arguments:
+    description: 'any extra arguments such as using sksl or passing a variable using --dart-define etc.'
+    required: false
+  extra-step:
+    description: ''
+outputs:
+  artifact-path: 
+    description: 'The path to the artifact (ipa, apk or appbundle) created by this action'
+    value: ${{ steps.build-artifact.outputs.artifact-path }}
+runs:
+  using: "composite"
+  steps:
+    - uses: roadsurfer-com/actions/setup-flutter@main
+      with:
+        use-cache: ${{ inputs.use-cache }}
+        clean: ${{ inputs.clean }}
+        setup-gems: ${{ inputs.build-type == 'ipa' }}
+    - id: build-artifact
+      name: "Building Artifact"
+      shell: bash
+      run: |
+        # 1. Get version number from tag (in case a tag is pushed)
+        version_number_argument=""
+        # Get tag if it exists
+        if [[ $GITHUB_REF == refs/tags/* ]]; then
+          tag=${GITHUB_REF#refs/tags/}
+          tag=${tag//[!0-9.-_]/}
+          echo "Using Version number from tag => $tag"
+          version_number_argument="--build-name=$tag"
+        fi
+
+        # 2. Build flutter with build number and version number
+        flutter build ${{ inputs.build-type }} --build-number=${{ inputs.build-number }} $version_number_argument ${{ inputs.build-arguments }} | tee flutter_build.log
+
+        # 3. search for word that ends with certain strings and then remove the ending . if any and convert to relative path if needed
+        artifact_path=$(cat flutter_build.log | awk '{for (word=1;word<=NF;word++) if ($word~/release.apk|release.aab|.xcarchive|.ipa/) print $word}' | sed 's/\.$//')
+
+        echo "artifact-path=$artifact_path" >> $GITHUB_OUTPUT

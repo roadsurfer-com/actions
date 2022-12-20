@@ -1,0 +1,66 @@
+name: 'Publish Android APK'
+description: 'Building IPA, APK or App Bundle for flutter applications'
+inputs:
+  build-number:
+    description: 'Build number'
+    required: true
+  use-cache:
+    description: 'Use cached version of packages (to speed up the build)'
+    required: false
+    default: true
+  clean:
+    description: 'Should perform a `flutter clean` first?'
+    required: false
+    default: false
+  build-arguments:
+    description: 'any extra arguments such as using sksl or passing a variable using --dart-define etc.'
+    required: false
+  key-store-file-content:
+    description: ''
+    required: true
+  key-store-password:
+    description: ''
+    required: true
+  signing-key-alias:
+    description: ''
+    required: true
+  signing-key-password:
+    description: ''
+    required: true  
+  github-username:
+    type: string
+    required: true
+  github-token:
+    type: string
+    required: true
+outputs:
+  artifact-path: 
+    description: 'The path to the apk created by this action'
+    value: ${{ steps.build.outputs.artifact-path }}
+runs:
+  using: "composite"
+  steps:
+    - uses: roadsurfer-com/actions/setup-android@main
+      with:
+        key-store-file-content: ${{ inputs.key-store-file-content }}
+        key-store-password: ${{ inputs.key-store-password }}
+        signing-key-alias: ${{ inputs.signing-key-alias }}
+        signing-key-password: ${{ inputs.signing-key-password }}
+        github-username: ${{ inputs.github-username }}
+        github-token: ${{ inputs.github-token }}
+    - uses: roadsurfer-com/actions/flutter-build@main
+      id: build
+      with:
+        clean: ${{ inputs.clean }}
+        build-number: ${{ inputs.build-number }}
+        build-arguments: ${{ inputs.build-arguments }}
+        build-type: apk
+        use-cache: ${{ inputs.use-cache }}
+    - name: Rename APK to Runner.apk
+      shell: bash
+      run: cp ${{ steps.build.outputs.artifact-path }} Runner.apk
+    - name: Upload Artifact (APK)
+      uses: actions/upload-artifact@v3
+      with:
+        name: Runner.apk
+        path: Runner.apk
